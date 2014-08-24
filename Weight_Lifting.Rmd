@@ -1,0 +1,144 @@
+---
+title: "Predicting Weight Lifting Manners - A Human Activity Recognition"
+author: "Pk"
+date: "Saturday, August 23, 2014"
+output: html_document
+---            
+***
+***
+
+## Synopsis:
+Human Activity Recognition aims to identify the actions carried out by a person given a set of observations of him/herself and the surrounding environment. Since the 1980s, this research field has captured the attention of several computer science communities due to its strength in providing personalized support for many different
+applications and its connection to many different fields of study such as medicine, human-computer interaction, or sociology.The approach we propose for the Weight Lifting Exercises dataset is to investigate "how (well)" an activity was performed by the wearer. The "how (well)" investigation has only received little attention so far, even though it potentially provides useful information for a large variety of applications,such as sports training.
+ 
+One of the most recent, challenging and appealing applications in this framework consists in sensing human body motion using devices such as Jawbone Up, Nike FuelBand, and Fitbit, it is now possible to collect a large amount of data about personal activity relatively inexpensively. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this study, we present a method to predict what activity a person/subject is performing based on the quantitative measurements that has been created using inertial data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).  Four classes aligned to common mistakes while Class A corresponds to the specified execution of the exercise.
+
+### Methods:
+
+Loading required libraries
+```{r}
+library(caret)
+library(randomForest)
+
+```
+
+#### Downloading, loading and cleaning data
+
+```{r cache=T}
+# Set working directory
+setwd("D:/My docs/Analysis + Cousera/Data Science Specialization/8- Practical Machine Learning/project")
+
+# Download training data
+#download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv",destfile = "./pml-training.csv")
+
+# Download test data
+#download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv",destfile = "./pml-testing.csv")
+
+#Load training and testing data
+
+training <- read.csv("pml-training.csv")
+
+testing <- read.csv("pml-testing.csv")
+
+### Cleaning Training and Testing data
+
+TraincolumnWithNA <- colSums(is.na(training))  # Identifying columns with NA and removing them
+TrainingNew <- training[!TraincolumnWithNA]    # Removing Na columns
+
+#badColumns <- TraincolumnWithNA >= 19000             # ignoring columns with majority NA values
+#TrainingNew <- training[!badColumns] 
+
+#sum(is.na(TrainingNew))
+
+ TrainingNew <- TrainingNew[, c(21:42, 49:51, 61:73, 83:93)]          # Removing these columns helps with predictions
+#TrainingNew <- TrainingNew[, c(83:93)]
+
+#TestcolumnWithNA <- colSums(is.na(testing))   # Identifying columns with NA and removing them
+#TestingNew <- testing[!TestcolumnWithNA]      # Removing Na columns
+
+#TestingNew <- TestingNew[, c(7:60)]            # Removing these columns helps with predictions
+#TestingNew <- TestingNew[, c(21:42, 49:51, 61:73, 83:93)]
+```
+
+#### Exploratory Analysis
+The data was first examined by looking at the names of the variables in the data set and checked to ensure
+that they were syntactically valid variable names and were not duplicated. 
+Exploratory analysis was performed by examining tables and plots of the observed data. Exploratory analysis was used to
+(1)gain insight of the data
+(2)identify missing values, and
+(3)verify the quality of the data.
+Summary statistics and a plot after cleaning the data is as shown below:
+```{r}
+#Summary statistics for the different class grouping
+
+summary(TrainingNew$classe)
+plot(TrainingNew$classe, col = c("blue", "Red", "Green", "Yellow", "Violet"), main ="Plot showing classe")
+```
+
+#### Statistical Modelling
+
+We use the random forest package in R to build a classifier for predicting the classe value (activity manner) based on the quantitative measurements recorded from the belt, forearm, arm, and dumbell devices found  in our data set. 
+
+We first partition our clean data (TrainingNew) into training and testing data.
+
+```{r}
+set.seed(100)
+Training <- TrainingNew[sample(nrow(TrainingNew), 1500),]  # Only 1,500 cases were used for computational reasons
+
+```
+
+```{r}
+partition <- createDataPartition(y = Training$classe, p = 0.7, list = FALSE)
+trainingdata <- Training[partition, ]
+testdata <- Training[-partition, ]
+```
+
+We now build our model using four-fold cross-validation: 
+
+```{r}
+model <- train(classe ~ ., data = trainingdata, method = "rf", prox = TRUE, 
+               trControl = trainControl(method = "cv", number = 4, allowParallel = TRUE))
+model
+```
+
+
+### Results
+
+#### Calculating In-Sample Accuracy 
+
+```{r}
+trainPred <- predict(model, trainingdata) 
+confusionMatrix(trainPred, trainingdata$classe)
+```
+
+We can see from the above statistics that in-sample prediction accuracy is 100% (accuracy = 1)
+
+#### Calculating Out-Sample Accuracy 
+
+```{r}
+testPred <- predict(model, testdata) 
+confusionMatrix(testPred, testdata$classe)
+```
+
+Out-sample prediction is 89.9% .
+
+#### Programming Assignment
+
+Here, we build a prediction algorithm on our model to predict the 20 cases  in the test data set:
+
+```{r}
+predictClass <- predict(model, testing)
+predictClass <- as.character(predictClass)
+predictClass
+```
+
+
+
+
+
+### Conclusion
+
+In this study, our prediction model suggests that it may generalize well on new
+dataset(new samples) as we observed an overall accuracy of 89.9% for the test data.Prediction accuracy is lower because much computational power was needed to have used all the relevant cases but we had to sample to save time for this assignment. Future work may include all cases and fine tuning the model to enhance the accuracy further then serve to the real life problem solving.
